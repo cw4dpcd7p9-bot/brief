@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>brief</title>
+  <style>
+    :root {
+      --bg: #0b0b10;
+      --panel: #12121a;
+      --ink: #ece8dc;
+      --dim: #8b877c;
+      --line: #23232f;
+      --ok: #7dffb3;
+      --bad: #ff6b7a;
+      --accent: #c8ff4d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.45 "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    }
+    body { padding: 32px 20px 64px; }
+    main { width: min(720px, 100%); margin: 0 auto; }
+    header { margin-bottom: 28px; }
+    .mark {
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    h1 { font-size: 28px; font-weight: 500; margin-top: 8px; }
+    p.lead { color: var(--dim); margin-top: 8px; }
+    form {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 16px;
+    }
+    label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      background: #0b0b10;
+      border: 1px solid #2c2c3a;
+      color: var(--ink);
+      font: inherit;
+      padding: 12px 12px;
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    .row { display: grid; grid-template-columns: 1fr 180px; gap: 10px; margin-top: 12px; }
+    @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+    button {
+      margin-top: 14px;
+      width: 100%;
+      border: 0;
+      background: var(--accent);
+      color: #111;
+      font: inherit;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 12px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    .msg { min-height: 1.4em; margin-top: 12px; color: var(--dim); }
+    .msg.bad { color: var(--bad); }
+    .result {
+      display: none;
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      padding: 14px;
+      background: #101018;
+    }
+    .result.show { display: block; }
+    .short { font-size: 18px; color: var(--ok); word-break: break-all; }
+    .actions { display: flex; gap: 8px; margin-top: 10px; }
+    .ghost {
+      margin: 0;
+      width: auto;
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      letter-spacing: 0.06em;
+    }
+    section { margin-top: 36px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 13px;
+    }
+    th {
+      color: var(--dim);
+      font-weight: 500;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    td a { color: var(--ink); }
+    td.url { color: var(--dim); word-break: break-all; max-width: 280px; }
+    .kill {
+      margin: 0;
+      width: auto;
+      background: transparent;
+      color: var(--bad);
+      border: 1px solid #3a1e24;
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+    .empty { color: var(--dim); padding: 12px 0; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
+</head>
+<body>
+  <main>
+    <header>
+      <div class="mark">local · no account</div>
+      <h1>brief</h1>
+      <p class="lead">Paste a long URL. Get a short one. Hits are counted. Nothing leaves this machine unless you deploy it.</p>
+    </header>
+    <form id="form">
+      <label for="url">URL</label>
+      <input id="url" name="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…" required />
+      <div class="row">
+        <div>
+          <label for="slug">Custom slug</label>
+          <input id="slug" name="slug" autocomplete="off" spellcheck="false" placeholder="optional" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <input id="preview" disabled placeholder="auto if empty" />
+        </div>
+      </div>
+      <button type="submit" id="go">Shorten</button>
+      <div class="msg" id="msg"></div>
+      <div class="result" id="result">
+        <div class="short" id="short"></div>
+        <div class="actions">
+          <button class="ghost" type="button" id="copy">Copy</button>
+          <button class="ghost" type="button" id="open">Open</button>
+        </div>
+      </div>
+    </form>
+    <section>
+      <label>Links</label>
+      <div id="list" class="empty">none yet</div>
+    </section>
+  </main>
+  <script>
+    const form = document.getElementById("form");
+    const urlEl = document.getElementById("url");
+    const slugEl = document.getElementById("slug");
+    const preview = document.getElementById("preview");
+    const go = document.getElementById("go");
+    const msg = document.getElementById("msg");
+    const result = document.getElementById("result");
+    const shortEl = document.getElementById("short");
+    const list = document.getElementById("list");
+    let lastShort = "";
+
+    slugEl.addEventListener("input", () => {
+      preview.value = slugEl.value.trim() ? "/" + slugEl.value.trim() : "auto if empty";
+    });
+
+    async function loadList() {
+      const res = await fetch("/api/links");
+      const data = await res.json();
+      const links = data.links || [];
+      if (!links.length) {
+        list.className = "empty";
+        list.textContent = "none yet";
+        return;
+      }
+      list.className = "";
+      list.innerHTML = `
+        <table>
+          <thead><tr><th>short</th><th>hits</th><th>target</th><th></th></tr></thead>
+          <tbody>
+            ${links.map((row) => `
+              <tr>
+                <td><a href="/${row.slug}">/${row.slug}</a></td>
+                <td>${row.hits}</td>
+                <td class="url">${escapeHtml(row.url)}</td>
+                <td><button class="kill" data-slug="${escapeHtml(row.slug)}">delete</button></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&")
+        .replaceAll("<", "<")
+        .replaceAll(">", ">")
+        .replaceAll('"', """);
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      msg.textContent = "";
+      msg.className = "msg";
+      result.classList.remove("show");
+      go.disabled = true;
+      try {
+        const res = await fetch("/api/shorten", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: urlEl.value,
+            slug: slugEl.value.trim() || undefined
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "failed");
+        lastShort = data.short;
+        shortEl.textContent = data.short;
+        result.classList.add("show");
+        msg.textContent = data.reused ? "already existed — reused it" : "created";
+        await loadList();
+      } catch (err) {
+        msg.className = "msg bad";
+        msg.textContent = err.message;
+      } finally {
+        go.disabled = false;
+      }
+    });
+
+    document.getElementById("copy").addEventListener("click", async () => {
+      if (!lastShort) return;
+      await navigator.clipboard.writeText(lastShort);
+      msg.textContent = "copied";
+    });
+    document.getElementById("open").addEventListener("click", () => {
+      if (lastShort) window.open(lastShort, "_blank");
+    });
+    list.addEventListener("click", async (event) => {
+      const btn = event.target.closest("[data-slug]");
+      if (!btn) return;
+      const slug = btn.getAttribute("data-slug");
+      const res = await fetch("/api/links/" + encodeURIComponent(slug), { method: "DELETE" });
+      if (res.ok) loadList();
+    });
+
+    loadList().catch(() => {
+      list.textContent = "start the server: python3 server.py";
+    });
+  </script>
+</body>
+</html>
