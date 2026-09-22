@@ -1,0 +1,7 @@
+.DS_Store
+*.log
+.idea
+.vscode
+__pycache__/
+*.pyc
+links.json.tmp
